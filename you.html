@@ -774,28 +774,85 @@ window.UW_FIREBASE = {
   }
 
   function createPendingMembership(f, u, name) {
-    var provider = (u.providerData && u.providerData[0] && u.providerData[0].providerId === 'google.com') ? 'google' : 'email';
-    var now = f.d.serverTimestamp();
-    var profile = {
-      name: name || u.displayName || (u.email ? u.email.split('@')[0] : 'Reader'),
-      email: u.email || '',
-      provider: provider,
-      status: 'pending',
-      updatedAt: now
-    };
-    var request = {
-      uid: u.uid,
-      name: profile.name,
-      email: profile.email,
-      provider: provider,
-      status: 'pending',
-      requestedAt: now
-    };
-    membershipCache[u.uid] = profile;
-    return Promise.all([
-      f.d.setDoc(f.d.doc(f.db, 'users', u.uid), profile, { merge: true }),
-      f.d.setDoc(f.d.doc(f.db, 'membershipRequests', u.uid), request, { merge: true })
-    ]);
+  var provider =
+    (u.providerData &&
+      u.providerData[0] &&
+      u.providerData[0].providerId === 'google.com')
+      ? 'Google'
+      : 'Email';
+
+  var now = f.d.serverTimestamp();
+
+  var profile = {
+    name: name || u.displayName || (u.email ? u.email.split('@')[0] : 'User'),
+    email: u.email || '',
+    provider: provider,
+    status: 'pending',
+    updatedAt: now
+  };
+
+  var request = {
+    uid: u.uid,
+    name: profile.name,
+    email: profile.email,
+    provider: provider,
+    status: 'pending',
+    requestedAt: now
+  };
+
+  membershipCache[u.uid] = profile;
+
+  return Promise.all([
+    f.d.setDoc(
+      f.d.doc(f.db, 'users', u.uid),
+      profile,
+      { merge: true }
+    ),
+
+    f.d.setDoc(
+      f.d.doc(f.db, 'membershipRequests', u.uid),
+      request,
+      { merge: true }
+    )
+  ]).then(function () {
+
+    // Send approval request to your Gmail
+    return fetch('/api/notify-signup', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        name: profile.name,
+        email: profile.email,
+        uid: u.uid
+      })
+    }).then(function (response) {
+
+      if (!response.ok) {
+        return response.text().then(function (text) {
+          console.error(
+            'Signup notification failed:',
+            text
+          );
+        });
+      }
+
+      console.log(
+        'Signup approval email sent successfully.'
+      );
+
+    }).catch(function (error) {
+
+      // Keep the user's pending signup even if email sending fails
+      console.error(
+        'Could not send signup notification:',
+        error
+      );
+
+    });
+
+  });
   }
 
   function requireApproved(f, u) {
