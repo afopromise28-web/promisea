@@ -857,7 +857,18 @@ window.UW_FIREBASE = {
         return fb().then(function (f) {
           return f.a.createUserWithEmailAndPassword(f.auth, email, pw).then(function (cred) {
             return f.a.updateProfile(cred.user, { displayName: name }).then(function () {
-              return createPendingMembership(f, f.auth.currentUser, name).then(function () {
+              return createPendingMembership(f, f.auth.currentUser, name).then(function () {fetch('/api/notify-signup', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    name: name,
+    email: email
+  })
+}).catch(function (error) {
+  console.error('Notification failed:', error);
+});
                 return f.a.signOut(f.auth).then(function () {
                   setUser(null);
                   authFlow = null;
