@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+Disallow: /you.html
+Sitemap: https://unconventionalwisdom.online/sitemap.xml
